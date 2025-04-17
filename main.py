@@ -1,19 +1,27 @@
 import sys
 import random
-from itertools import cycle
 
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QGridLayout, QMessageBox, QVBoxLayout, QComboBox, QLabel
+
 
 class TicTacToe(QWidget):
-    def __init__(self, size=3):
+    def __init__(self, size=3, level='Hard'):
         super().__init__()
         self.size = size
+        self.level = level
         self.init_ui()
     def init_ui(self):
         self.setWindowTitle('Uɴʀᴇᴀʟ TɪᴄTᴀᴄTᴏᴇ')
         self.width = int( 1080 / 5  * self.size)
         self.height = int( 720 / 5 * self.size)
         self.setGeometry(500, 500, self.width, self.height)
+        self.layout = QVBoxLayout()
+        self.levelSelector = QComboBox()
+        self.levelSelector.addItems(['Hard', 'Medium', 'Easy'])
+        self.levelSelector.setCurrentText(self.level)
+        self.levelSelector.currentTextChanged.connect(lambda lvl: setattr(self, 'level', lvl))
+        self.layout.addWidget(QLabel('Выберите уровень сложности'))
+        self.layout.addWidget(self.levelSelector)
         self.grid = QGridLayout()
         self.buttons = [[QPushButton(' ') for i in range(self.size)] for i in range(self.size)]
         self.board = [[None for i in range(self.size)] for i in range(self.size)]
@@ -22,11 +30,13 @@ class TicTacToe(QWidget):
                 self.buttons[a][b].setFixedSize(int(self.width / self.size), int(self.height / self.size))
                 self.buttons[a][b].clicked.connect(lambda _, x=a, y=b: self.playerMove(x,y))
                 self.grid.addWidget(self.buttons[a][b], a, b)
-        self.setLayout(self.grid)
+        self.layout.addLayout(self.grid)
+        self.setLayout(self.layout)
     def playerMove(self, x, y):
         if self.board[x][y] is None:
             self.board[x][y] = "X"
             self.buttons[x][y].setText("X")
+            self.levelSelector.setEnabled(False)
             if self.check('X'):
                 self.show_win('player')
                 return
@@ -35,6 +45,16 @@ class TicTacToe(QWidget):
                 return
             self.aiMove()
     def aiMove(self):
+        if self.level == 'Hard':
+            self.hardMove()
+        elif self.level == 'Medium':
+            if random.random() < 0.5:
+                self.randomMove()
+            else:
+                self.hardMove()
+        else:
+            self.randomMove()
+    def hardMove(self):
         bestScore = -float("inf")
         bestMove = None
         for x in range(self.size):
@@ -56,6 +76,16 @@ class TicTacToe(QWidget):
             if self.boardFull():
                 self.show_win('tie')
                 return
+    def randomMove(self):
+        empty_cells = [(x, y) for x in range(self.size) for y in range(self.size) if self.board[x][y] is None]
+        if empty_cells:
+            x, y = random.choice(empty_cells)
+            self.board[x][y] = 'O'
+            self.buttons[x][y].setText('O')
+            if self.check('O'):
+                self.show_win('ai')
+            elif self.boardFull():
+                self.show_win('tie')
     def miniMax(self, isMaximazing):
         if self.check('X'):
             return -1
@@ -108,6 +138,7 @@ class TicTacToe(QWidget):
         msg.exec()
         self.reset_board()
     def reset_board(self):
+        self.levelSelector.setEnabled(True)
         for a in range(self.size):
             for b in range(self.size):
                 self.board[a][b] = None
